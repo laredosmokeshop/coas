@@ -6,10 +6,6 @@
 <title>Certificates of Analysis</title>
 <meta name="description" content="Lab-tested Certificates of Analysis (COAs)." />
 <style>
-  /* ============================================================
-     CONFIG — only thing you might want to tweak is the page title
-     and the heading below. Filenames drive everything else.
-     ============================================================ */
   :root {
     --fg: #111;
     --muted: #6b6b6b;
@@ -151,7 +147,7 @@
     </header>
 
     <div class="search">
-      <input type="search" id="searchInput" placeholder="Search product or batch..." aria-label="Search COAs" />
+      <input type="search" id="searchInput" placeholder="Search product..." aria-label="Search COAs" />
     </div>
 
     <div id="status" class="status">Loading COAs...</div>
@@ -163,35 +159,30 @@
   </div>
 
 <script>
-/* ============================================================
-   CONFIGURATION — EDIT THESE TWO LINES AFTER YOU CREATE YOUR REPO
-   ============================================================ */
-const GITHUB_USER = "laredosmokeshop";   // e.g. "santiagorivas"
-const GITHUB_REPO = "coas";                    // the repo name you create
-const COA_FOLDER  = "coas";                    // folder inside the repo holding PDFs
-/* ============================================================ */
+const GITHUB_USER = "laredosmokeshop";
+const GITHUB_REPO = "coas";
+const COA_FOLDER  = "coas";
 
 const API_URL = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${COA_FOLDER}`;
 
-/**
- * Filename convention:
- *   ProductName__BatchNumber__YYYY-MM-DD.pdf
- *
- * Use hyphens for spaces in product names. Examples:
- *   Blue-Dream__B1234__2026-04-15.pdf  -> "Blue Dream", batch B1234, 2026-04-15
- *   OG-Kush__LOT-9981__2026-03-22.pdf  -> "OG Kush", batch LOT-9981, 2026-03-22
- *   Gummies-25mg__G-44__2026-04-01.pdf -> "Gummies 25mg", batch G-44, 2026-04-01
- */
 function parseFilename(name) {
   const base = name.replace(/\.pdf$/i, "");
   const parts = base.split("__");
-  if (parts.length < 3) {
-    return { product: base.replace(/-/g, " "), batch: "—", date: "" };
+  if (parts.length >= 3) {
+    return {
+      product: parts[0].replace(/-/g, " ").trim(),
+      batch: parts[1].trim(),
+      date: parts[2].trim()
+    };
   }
-  const product = parts[0].replace(/-/g, " ").trim();
-  const batch = parts[1].trim();
-  const date = parts[2].trim();
-  return { product, batch, date };
+  if (parts.length === 2) {
+    return {
+      product: parts[0].replace(/-/g, " ").trim(),
+      batch: null,
+      date: parts[1].trim()
+    };
+  }
+  return { product: base.replace(/-/g, " ").trim(), batch: null, date: "" };
 }
 
 function formatDate(iso) {
@@ -207,11 +198,9 @@ function groupByProduct(items) {
     if (!groups[it.product]) groups[it.product] = [];
     groups[it.product].push(it);
   }
-  // Sort batches inside each product newest-first
   for (const k in groups) {
     groups[k].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   }
-  // Sort product names alphabetically
   return Object.keys(groups).sort().map(k => ({ product: k, batches: groups[k] }));
 }
 
@@ -226,7 +215,7 @@ function render(filter = "") {
   const filtered = f
     ? ALL_ITEMS.filter(it =>
         it.product.toLowerCase().includes(f) ||
-        it.batch.toLowerCase().includes(f) ||
+        (it.batch && it.batch.toLowerCase().includes(f)) ||
         (it.date || "").includes(f))
     : ALL_ITEMS;
 
@@ -249,8 +238,8 @@ function render(filter = "") {
           <li>
             <a class="batch" href="${escapeAttr(b.url)}" target="_blank" rel="noopener">
               <div class="batch-info">
-                <p class="batch-id">Batch ${escapeHtml(b.batch)}</p>
-                <p class="batch-date">${escapeHtml(formatDate(b.date))}</p>
+                ${b.batch ? `<p class="batch-id">Batch ${escapeHtml(b.batch)}</p>` : ""}
+                <p class="batch-date">Tested ${escapeHtml(formatDate(b.date))}</p>
               </div>
               <span class="batch-arrow" aria-hidden="true">&rsaquo;</span>
             </a>
